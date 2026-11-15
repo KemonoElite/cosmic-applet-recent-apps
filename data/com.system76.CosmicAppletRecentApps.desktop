@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=Recent Apps
+Comment=Shortcuts to your most recently used apps
+Type=Application
+Exec=cosmic-applet-recent-apps
+Terminal=false
+Categories=COSMIC;
+Keywords=COSMIC;Applet;Recent;Apps;Dock;
+Icon=com.system76.CosmicAppletRecentApps
+StartupNotify=true
+NoDisplay=true
+X-CosmicApplet=true
+X-HostWaylandDisplay=true
+X-OverflowPriority=10

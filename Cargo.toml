@@ -1,0 +1,43 @@
+[package]
+name = "cosmic-applet-recent-apps"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "COSMIC panel applet with shortcuts to your most recently used apps"
+
+[dependencies]
+cosmic-config = { git = "https://github.com/pop-os/libcosmic" }
+cosmic-launch = { git = "https://github.com/pop-os/libcosmic", features = ["systemd", "tokio"] }
+i18n-embed = { version = "0.16.0", features = ["fluent-system", "desktop-requester"] }
+i18n-embed-fl = "0.10"
+libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = false, features = [
+    "applet",
+    "applet-token",
+    "dbus-config",
+    "desktop",
+    "multi-window",
+    "tokio",
+    "wayland",
+    "winit",
+] }
+rust-embed = "8.11.0"
+serde = { version = "1.0.228", features = ["derive"] }
+tokio = { version = "1.49.0", features = ["full"] }
+tracing = "0.1"
+tracing-log = "0.2.0"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+zbus = { version = "6.2.1", default-features = false, features = ["tokio"] }
+
+[profile.release]
+opt-level = 3
+panic = "abort"
+lto = "thin"
+
+# Same pins as upstream cosmic-applets, so the dependency graph matches the
+# snapshot this applet was written against.
+[patch."https://github.com/smithay/client-toolkit.git"]
+sctk = { package = "smithay-client-toolkit", version = "0.20.0" }
+
+[patch."https://github.com/pop-os/cosmic-protocols"]
+cosmic-protocols = { git = "https://github.com/pop-os/cosmic-protocols//", rev = "c0cff4d" }
+cosmic-client-toolkit = { git = "https://github.com/pop-os/cosmic-protocols//", rev = "c0cff4d" }
