@@ -26,10 +26,14 @@ build *args:
 check *args:
     cargo check {{ args }}
 
-# Installs the binary, desktop entry and icon (set prefix=... / rootdir=... as needed)
+# Installs the binary, desktop entry and icon (set prefix=... / rootdir=... as needed).
+# The desktop entry gets an absolute Exec path: the panel starts applets with its own
+# PATH, which does not contain e.g. ~/.local/bin or ~/.nix-profile/bin.
 install:
     install -Dm0755 {{ targetdir }}/{{ target }}/{{ name }} {{ bindir }}/{{ name }}
-    install -Dm0644 data/{{ appid }}.desktop {{ sharedir }}/applications/{{ appid }}.desktop
+    install -d {{ sharedir }}/applications
+    sed 's|^Exec=.*|Exec={{ prefix }}/bin/{{ name }}|' data/{{ appid }}.desktop > {{ sharedir }}/applications/{{ appid }}.desktop
+    chmod 0644 {{ sharedir }}/applications/{{ appid }}.desktop
     install -Dm0644 data/icons/scalable/apps/{{ appid }}.svg {{ iconsdir }}/scalable/apps/{{ appid }}.svg
 
 uninstall:

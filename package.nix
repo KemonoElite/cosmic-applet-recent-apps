@@ -28,9 +28,9 @@ rustPlatform.buildRustPackage {
     );
   };
 
-  # Build once with this left as `lib.fakeHash`; Nix prints the real hash
-  # ("got: sha256-...") to paste here. Update it whenever Cargo.lock changes.
-  cargoHash = lib.fakeHash;
+  # Hash of the vendored dependencies (derived from Cargo.lock only). When Cargo.lock
+  # changes, set this to `lib.fakeHash`, build once, and paste the "got: sha256-..." value.
+  cargoHash = "sha256-i/uaFgV1Q2IB3ohCLSkxfJbjDpK4Oprlw+DKH7yFyNs=";
 
   doCheck = false;
 
@@ -50,6 +50,9 @@ rustPlatform.buildRustPackage {
   postInstall = ''
     install -Dm0644 data/${appId}.desktop \
       -t $out/share/applications
+    # The panel starts applets with its own PATH, so point Exec at the store path.
+    substituteInPlace $out/share/applications/${appId}.desktop \
+      --replace-fail "Exec=${crate}" "Exec=$out/bin/${crate}"
     install -Dm0644 data/icons/scalable/apps/${appId}.svg \
       -t $out/share/icons/hicolor/scalable/apps
   '';

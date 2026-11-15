@@ -146,13 +146,14 @@ impl RecentApps {
             // Might be a freshly installed app.
             self.update_desktop_entries();
             if self.find_entry(app_id).is_none() {
-                tracing::debug!(app_id, "no desktop entry, not tracking");
+                tracing::warn!(app_id, "no desktop entry found for window, not tracking it");
                 self.unresolvable.insert(app_id.to_owned());
                 return;
             }
         }
 
         if self.config.touch(app_id) {
+            tracing::info!(app_id, "most recently used app");
             if let Some(helper) = &self.config_helper {
                 self.config.save(helper);
             }
@@ -201,6 +202,23 @@ impl RecentApps {
                 tracing::error!(?why, "failed to spawn application");
             }
         });
+    }
+
+    /// Drawn while there is nothing to show yet, so the applet is never an
+    /// invisible 1x1 widget (which looks exactly like "the applet didn't load").
+    fn placeholder(&self) -> Element<'_, Message> {
+        self.core
+            .applet
+            .applet_tooltip::<Message>(
+                self.core
+                    .applet
+                    .icon_button("document-open-recent-symbolic"),
+                fl!("empty-tooltip"),
+                false,
+                Message::Surface,
+                None,
+            )
+            .into()
     }
 
     fn icon_button<'a>(&'a self, item: &'a Item) -> Element<'a, Message> {
@@ -258,6 +276,12 @@ impl cosmic::Application for RecentApps {
         };
         app.update_desktop_entries();
         app.rebuild_items();
+        tracing::info!(
+            desktop_entries = app.desktop_entries.len(),
+            saved_recents = app.config.recent.len(),
+            shown = app.items.len(),
+            "recent apps applet started"
+        );
 
         (app, Task::none())
     }
@@ -341,19 +365,23 @@ impl cosmic::Application for RecentApps {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let buttons = self.items.iter().map(|item| self.icon_button(item));
-        let spacing = self.core.applet.spacing as f32;
-
-        let content: Element<_> = if self.core.applet.is_horizontal() {
-            Row::with_children(buttons)
-                .align_y(Alignment::Center)
-                .spacing(spacing)
-                .into()
+        let content: Element<_> = if self.items.is_empty() {
+            self.placeholder()
         } else {
-            Column::with_children(buttons)
-                .align_x(Alignment::Center)
-                .spacing(spacing)
-                .into()
+            let buttons = self.items.iter().map(|item| self.icon_button(item));
+            let spacing = self.core.applet.spacing as f32;
+
+            if self.core.applet.is_horizontal() {
+                Row::with_children(buttons)
+                    .align_y(Alignment::Center)
+                    .spacing(spacing)
+                    .into()
+            } else {
+                Column::with_children(buttons)
+                    .align_x(Alignment::Center)
+                    .spacing(spacing)
+                    .into()
+            }
         };
 
         autosize(content, AUTOSIZE_MAIN_ID.clone())

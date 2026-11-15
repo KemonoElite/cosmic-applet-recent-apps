@@ -22,8 +22,9 @@ Needs Rust (see `rust-toolchain.toml`), `just`, and the usual COSMIC build libra
 ## Nix / NixOS
 
 1. In a git repo run `git add -A` first: flakes ignore untracked files.
-2. `nix build`. It stops with a hash mismatch: paste the printed `got: sha256-...`
-   into `cargoHash` in `package.nix` and build again. Repeat whenever `Cargo.lock` changes.
+2. `nix build`. `cargoHash` in `package.nix` is already filled in for the committed `Cargo.lock`.
+   If you change `Cargo.lock` (or a nixpkgs update changes how deps are vendored), the build
+   fails with a hash mismatch: paste the printed `got: sha256-...` into `cargoHash` and build again.
 3. Use it from your system flake:
 
        inputs.recent-apps.url = "path:/path/to/cosmic-applet-recent-apps";
@@ -35,10 +36,48 @@ Needs Rust (see `rust-toolchain.toml`), `just`, and the usual COSMIC build libra
 
    With home-manager, use `nixpkgs.overlays = [ inputs.recent-apps.overlays.default ];`
    and `home.packages = [ pkgs.cosmic-applet-recent-apps ];` instead.
-4. Log out and back in, then add it under COSMIC Settings > Desktop > Panel >
-   Configure panel applets.
+4. Log out and back in, then add it to your dock (see "Adding it to the dock" below).
 
 `nix develop` gives a shell with cargo, clippy, rustfmt, rust-analyzer and just.
+
+## Adding it to the dock
+
+COSMIC Settings > Desktop > **Dock** > Configuration > **Configure dock applets**, then
+**Add applet** (bottom right), search "Recent Apps" and press **Add**. Drag it within the
+Start / Center / End segments to position it. (The top bar works the same way under
+Desktop > Panel > Configure panel applets.)
+
+- If the Dock page only shows **"Panel configuration is missing"** with a *Reset to default*
+  button, the dock has no saved configuration yet: press the button, then continue as above.
+- If the Dock page has a **Dock** switch, make sure it is on.
+
+## If it doesn't show up
+
+COSMIC Settings and the panel find applets only by scanning the `.desktop` files on
+`XDG_DATA_DIRS`, then the panel runs the entry's `Exec=` line. So:
+
+1. **Is it installed?** `nix build` only creates `./result`; that is not on any search path.
+   Install it (the NixOS module, `home.packages`, `nix profile install`, or `just install`), then check:
+
+       find -L $(echo $XDG_DATA_DIRS | tr : ' ') -name 'com.system76.CosmicAppletRecentApps.desktop' 2>/dev/null
+
+   No output means no profile COSMIC reads contains it yet.
+2. **Is it in the list?** Close and reopen COSMIC Settings (the list is scanned when the page opens),
+   then Add applet > "Recent Apps" as described above (the list says "No applets found..."
+   when nothing on `XDG_DATA_DIRS` matches). If it is still missing, log out and back in.
+3. **Added but blank?** With nothing to show yet the applet draws a small "recent" icon with a
+   tooltip. Once you have focused a few windows it is replaced by their icons. If the placeholder
+   never goes away, the focused apps have no matching `.desktop` entry (see the log below).
+4. **Logs.** The panel forwards the applet's output to the journal, tagged with its id:
+
+       journalctl --user -b | grep CosmicAppletRecentApps
+
+   Look for `recent apps applet started`, `most recently used app`, `no desktop entry found`,
+   or `exited with code` (a crash, with its message just above). Set `RUST_LOG=debug` for more.
+
+The installed `.desktop` file points `Exec=` at the absolute path of the binary, because the
+panel starts applets with its own `PATH` (which on NixOS or with a `~/.local` prefix usually
+does not contain the binary).
 
 ## Notes
 
