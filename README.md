@@ -70,7 +70,7 @@ COSMIC Settings and the panel find applets only by scanning the `.desktop` files
    never goes away, the focused apps have no matching `.desktop` entry (see the log below).
 4. **Logs.** The panel forwards the applet's output to the journal, tagged with its id:
 
-       journalctl --user -b | grep CosmicAppletRecentApps
+       journalctl --user -b -a | grep CosmicAppletRecentApps
 
    Look for `recent apps applet started`, `most recently used app`, `no desktop entry found`,
    or `exited with code` (a crash, with its message just above). Set `RUST_LOG=debug` for more.
@@ -85,7 +85,11 @@ The applet uses the icon theme the desktop is set to (Settings > Desktop > Appea
 at startup and live when you change it. For every app it shows, it logs the desktop entry, the
 `Icon=` name, the theme and the file it resolved:
 
-    journalctl --user -b | grep "recent app icon"
+    journalctl --user -b -a | grep "recent app icon"
+
+(`-a` shows lines the journal considers binary. The applet only logs after a rebuild *and* a
+re-login, since the panel keeps running the old binary until then. To test without the panel, run
+`cosmic-applet-recent-apps` in a terminal and focus a few windows: it prints the same lines.)
 
 If an icon still looks different from the one in the dock's app list, that line shows whether the
 theme has no icon of that name (the lookup then falls back to the app's own `hicolor` icon).

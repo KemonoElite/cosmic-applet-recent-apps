@@ -8,7 +8,13 @@ fn main() -> cosmic::iced::Result {
     let filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         tracing_subscriber::EnvFilter::new("warn,cosmic_applet_recent_apps=info")
     });
-    tracing_subscriber::fmt().with_env_filter(filter).init();
+    // Plain text, no timestamps: the panel forwards our output to the journal, which adds
+    // its own timestamps and shows lines containing colour codes as "[... blob data]".
+    tracing_subscriber::fmt()
+        .with_env_filter(filter)
+        .with_ansi(false)
+        .without_time()
+        .init();
     let _ = tracing_log::LogTracer::init();
 
     tracing::info!("Starting recent apps applet with version {VERSION}");
