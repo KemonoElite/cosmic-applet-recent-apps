@@ -79,6 +79,17 @@ The installed `.desktop` file points `Exec=` at the absolute path of the binary,
 panel starts applets with its own `PATH` (which on NixOS or with a `~/.local` prefix usually
 does not contain the binary).
 
+## Icons
+
+The applet uses the icon theme the desktop is set to (Settings > Desktop > Appearance > Icons),
+at startup and live when you change it. For every app it shows, it logs the desktop entry, the
+`Icon=` name, the theme and the file it resolved:
+
+    journalctl --user -b | grep "recent app icon"
+
+If an icon still looks different from the one in the dock's app list, that line shows whether the
+theme has no icon of that name (the lookup then falls back to the app's own `hicolor` icon).
+
 ## Notes
 
 - The app id `com.system76.CosmicAppletRecentApps` follows upstream's convention; rename it in

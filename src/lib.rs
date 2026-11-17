@@ -115,6 +115,19 @@ impl RecentApps {
                 continue;
             }
 
+            let icon_name = entry.icon().unwrap_or(&entry.appid);
+            tracing::info!(
+                app_id = %app_id,
+                desktop_entry = %entry.appid,
+                icon = icon_name,
+                icon_theme = %cosmic::icon_theme::default(),
+                resolved = ?cosmic::widget::icon::from_name(icon_name)
+                    .prefer_svg(true)
+                    .size(128)
+                    .path(),
+                "recent app icon"
+            );
+
             items.push(Item {
                 app_id: app_id.clone(),
                 name: entry
@@ -258,6 +271,10 @@ impl cosmic::Application for RecentApps {
     const APP_ID: &'static str = APP_ID;
 
     fn init(core: cosmic::app::Core, _flags: ()) -> (Self, app::Task<Message>) {
+        // Use the icon theme the desktop is set to (Settings > Desktop > Appearance),
+        // and keep following it in `system_theme_update`.
+        cosmic::icon_theme::set_default(core.system_theme().cosmic().icon_theme.clone());
+
         let config_helper = Config::new(APP_ID, RecentAppsConfig::VERSION).ok();
         let config = config_helper
             .as_ref()
@@ -296,6 +313,18 @@ impl cosmic::Application for RecentApps {
 
     fn style(&self) -> Option<iced::theme::Style> {
         Some(cosmic::applet::style())
+    }
+
+    fn system_theme_update(
+        &mut self,
+        _keys: &[&'static str],
+        new_theme: &cosmic::cosmic_theme::Theme,
+    ) -> app::Task<Message> {
+        if cosmic::icon_theme::default() != new_theme.icon_theme {
+            tracing::info!(icon_theme = %new_theme.icon_theme, "icon theme changed");
+            cosmic::icon_theme::set_default(new_theme.icon_theme.clone());
+        }
+        Task::none()
     }
 
     fn update(&mut self, message: Message) -> app::Task<Message> {
