@@ -28,7 +28,8 @@ use cosmic::{
         sctk::reexports::calloop,
         wayland_protocols::ext::foreign_toplevel_list::v1::client::ext_foreign_toplevel_handle_v1::ExtForeignToplevelHandleV1,
     },
-    cosmic_config::{Config, CosmicConfigEntry},
+    cosmic_config::{Config, ConfigGet, CosmicConfigEntry},
+    cosmic_theme::{Theme as CosmicTheme, ThemeMode},
     desktop::{IconSourceExt, fde},
     iced::{
         self, Alignment, Length, Limits, Subscription,
@@ -45,6 +46,33 @@ use wayland_subscription::{
 use crate::localize::localize;
 
 static AUTOSIZE_MAIN_ID: LazyLock<WidgetId> = LazyLock::new(|| WidgetId::new("autosize-main"));
+
+/// The icon theme chosen in COSMIC Settings > Desktop > Appearance > Icon theme.
+/// Settings stores it in the dark or light theme config, whichever mode is active.
+fn desktop_icon_theme() -> Option<String> {
+    let mode = ThemeMode::config().ok()?;
+    let is_dark = ThemeMode::is_dark(&mode).ok()?;
+    let config = if is_dark {
+        CosmicTheme::dark_config()
+    } else {
+        CosmicTheme::light_config()
+    }
+    .ok()?;
+    config.get::<String>("icon_theme").ok()
+}
+
+/// Points the toolkit's icon lookups at the desktop's icon theme.
+fn follow_desktop_icon_theme() {
+    match desktop_icon_theme() {
+        Some(name) => {
+            if cosmic::icon_theme::default() != name {
+                tracing::info!(icon_theme = %name, "using the desktop's icon theme");
+                cosmic::icon_theme::set_default(name);
+            }
+        }
+        None => tracing::warn!("could not read the icon theme from the COSMIC theme config"),
+    }
+}
 
 pub fn run() -> cosmic::iced::Result {
     localize();
@@ -107,6 +135,10 @@ impl RecentApps {
             if items.len() == MAX_SHOWN {
                 break;
             }
+            // Never list ourselves (can be saved if the applet was run as a normal window).
+            if app_id == APP_ID {
+                continue;
+            }
             let Some(entry) = self.find_entry(app_id) else {
                 continue;
             };
@@ -144,6 +176,9 @@ impl RecentApps {
 
     /// Marks `app_id` as the most recently used app.
     fn record_use(&mut self, app_id: &str) {
+        if app_id == APP_ID {
+            return;
+        }
         if self
             .config
             .recent
@@ -271,9 +306,9 @@ impl cosmic::Application for RecentApps {
     const APP_ID: &'static str = APP_ID;
 
     fn init(core: cosmic::app::Core, _flags: ()) -> (Self, app::Task<Message>) {
-        // Use the icon theme the desktop is set to (Settings > Desktop > Appearance),
-        // and keep following it in `system_theme_update`.
-        cosmic::icon_theme::set_default(core.system_theme().cosmic().icon_theme.clone());
+        // Use the icon theme the desktop is set to, and keep following it when the
+        // theme (or light/dark mode) changes.
+        follow_desktop_icon_theme();
 
         let config_helper = Config::new(APP_ID, RecentAppsConfig::VERSION).ok();
         let config = config_helper
@@ -318,12 +353,18 @@ impl cosmic::Application for RecentApps {
     fn system_theme_update(
         &mut self,
         _keys: &[&'static str],
-        new_theme: &cosmic::cosmic_theme::Theme,
+        _new_theme: &cosmic::cosmic_theme::Theme,
     ) -> app::Task<Message> {
-        if cosmic::icon_theme::default() != new_theme.icon_theme {
-            tracing::info!(icon_theme = %new_theme.icon_theme, "icon theme changed");
-            cosmic::icon_theme::set_default(new_theme.icon_theme.clone());
-        }
+        follow_desktop_icon_theme();
+        Task::none()
+    }
+
+    fn system_theme_mode_update(
+        &mut self,
+        _keys: &[&'static str],
+        _new_mode: &ThemeMode,
+    ) -> app::Task<Message> {
+        follow_desktop_icon_theme();
         Task::none()
     }
 

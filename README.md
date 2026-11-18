@@ -81,18 +81,21 @@ does not contain the binary).
 
 ## Icons
 
-The applet uses the icon theme the desktop is set to (Settings > Desktop > Appearance > Icons),
-at startup and live when you change it. For every app it shows, it logs the desktop entry, the
-`Icon=` name, the theme and the file it resolved:
+The applet uses the icon theme chosen in COSMIC Settings > Desktop > Appearance > Icon theme.
+It reads that choice straight from the theme config (Settings stores it in the dark *or* light
+theme config, whichever mode is active) at startup, and again whenever the theme or light/dark
+mode changes. The log shows what it found, and for every app it shows the desktop entry, the
+`Icon=` name and the file it resolved:
 
-    journalctl --user -b -a | grep "recent app icon"
+    journalctl --user -b -a | grep -E "icon theme|recent app icon"
 
-(`-a` shows lines the journal considers binary. The applet only logs after a rebuild *and* a
-re-login, since the panel keeps running the old binary until then. To test without the panel, run
-`cosmic-applet-recent-apps` in a terminal and focus a few windows: it prints the same lines.)
+Expect `using the desktop's icon theme icon_theme=<your theme>` and resolved paths inside that
+theme's folder. (`-a` shows lines the journal considers binary. The applet only logs after a
+rebuild *and* a re-login, since the panel keeps running the old binary until then. To test without
+the panel, run `cosmic-applet-recent-apps` in a terminal: it prints the same lines.)
 
-If an icon still looks different from the one in the dock's app list, that line shows whether the
-theme has no icon of that name (the lookup then falls back to the app's own `hicolor` icon).
+If an app's icon is still the generic one, your theme has no icon with that name and the lookup
+falls back to the app's own `hicolor` icon; the `resolved` path shows which.
 
 ## Notes
 
