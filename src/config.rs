@@ -38,3 +38,14 @@ impl RecentAppsConfig {
         }
     }
 }
+
+/// ID of the COSMIC toolkit config.
+pub const TOOLKIT_CONFIG_ID: &str = "com.system76.CosmicTk";
+
+/// Just the one key we need from the toolkit config. Released COSMIC Settings stores the
+/// chosen icon theme here; newer development builds moved it into the dark/light theme config.
+#[derive(Debug, Clone, Default, PartialEq, Eq, CosmicConfigEntry)]
+#[version = 1]
+pub struct ToolkitIconTheme {
+    pub icon_theme: String,
+}

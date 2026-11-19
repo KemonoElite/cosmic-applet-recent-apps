@@ -82,17 +82,18 @@ does not contain the binary).
 ## Icons
 
 The applet uses the icon theme chosen in COSMIC Settings > Desktop > Appearance > Icon theme.
-It reads that choice straight from the theme config (Settings stores it in the dark *or* light
-theme config, whichever mode is active) at startup, and again whenever the theme or light/dark
-mode changes. The log shows what it found, and for every app it shows the desktop entry, the
-`Icon=` name and the file it resolved:
+Where that choice is stored depends on the COSMIC version: released builds keep it in the toolkit
+config (`~/.config/cosmic/com.system76.CosmicTk/v1/icon_theme`), newer development builds in the
+dark/light theme config. The applet checks the theme config first, then the toolkit config, at
+startup and again whenever either changes. The log shows what it found, and for every app it
+shows the desktop entry, the `Icon=` name and the file it resolved:
 
     journalctl --user -b -a | grep -E "icon theme|recent app icon"
 
-Expect `using the desktop's icon theme icon_theme=<your theme>` and resolved paths inside that
-theme's folder. (`-a` shows lines the journal considers binary. The applet only logs after a
-rebuild *and* a re-login, since the panel keeps running the old binary until then. To test without
-the panel, run `cosmic-applet-recent-apps` in a terminal: it prints the same lines.)
+Expect `using the desktop's icon theme icon_theme=<your theme> source=toolkit config` and
+resolved paths inside that theme's folder. (`-a` shows lines the journal considers binary. The
+applet only logs after a rebuild *and* a re-login, since the panel keeps running the old binary
+until then. To test without the panel, run `cosmic-applet-recent-apps` in a terminal.)
 
 If an app's icon is still the generic one, your theme has no icon with that name and the lookup
 falls back to the app's own `hicolor` icon; the `resolved` path shows which.

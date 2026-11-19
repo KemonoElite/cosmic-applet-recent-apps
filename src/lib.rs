@@ -21,7 +21,7 @@ use std::{
     sync::{Arc, LazyLock},
 };
 
-use config::{APP_ID, MAX_SHOWN, RecentAppsConfig};
+use config::{APP_ID, MAX_SHOWN, RecentAppsConfig, TOOLKIT_CONFIG_ID, ToolkitIconTheme};
 use cosmic::{
     Element, Task, app,
     cctk::{
@@ -47,9 +47,9 @@ use crate::localize::localize;
 
 static AUTOSIZE_MAIN_ID: LazyLock<WidgetId> = LazyLock::new(|| WidgetId::new("autosize-main"));
 
-/// The icon theme chosen in COSMIC Settings > Desktop > Appearance > Icon theme.
-/// Settings stores it in the dark or light theme config, whichever mode is active.
-fn desktop_icon_theme() -> Option<String> {
+/// Icon theme from the dark/light theme config, whichever mode is active
+/// (where newer COSMIC Settings builds store it).
+fn theme_config_icon_theme() -> Option<String> {
     let mode = ThemeMode::config().ok()?;
     let is_dark = ThemeMode::is_dark(&mode).ok()?;
     let config = if is_dark {
@@ -61,16 +61,31 @@ fn desktop_icon_theme() -> Option<String> {
     config.get::<String>("icon_theme").ok()
 }
 
+/// Icon theme from the toolkit config (where released COSMIC Settings store it).
+fn toolkit_config_icon_theme() -> Option<String> {
+    let config = Config::new(TOOLKIT_CONFIG_ID, ToolkitIconTheme::VERSION).ok()?;
+    config.get::<String>("icon_theme").ok()
+}
+
+/// The icon theme chosen in COSMIC Settings > Desktop > Appearance > Icon theme.
+fn desktop_icon_theme() -> Option<(String, &'static str)> {
+    theme_config_icon_theme()
+        .map(|name| (name, "theme config"))
+        .or_else(|| toolkit_config_icon_theme().map(|name| (name, "toolkit config")))
+}
+
 /// Points the toolkit's icon lookups at the desktop's icon theme.
 fn follow_desktop_icon_theme() {
     match desktop_icon_theme() {
-        Some(name) => {
+        Some((name, source)) => {
             if cosmic::icon_theme::default() != name {
-                tracing::info!(icon_theme = %name, "using the desktop's icon theme");
+                tracing::info!(icon_theme = %name, source, "using the desktop's icon theme");
                 cosmic::icon_theme::set_default(name);
             }
         }
-        None => tracing::warn!("could not read the icon theme from the COSMIC theme config"),
+        None => {
+            tracing::warn!("could not read the icon theme from the COSMIC theme or toolkit config")
+        }
     }
 }
 
@@ -111,6 +126,7 @@ struct RecentApps {
 enum Message {
     Wayland(WaylandUpdate),
     ConfigUpdated(RecentAppsConfig),
+    IconThemeChanged,
     Open(String),
     Surface(surface::Action<Message>),
 }
@@ -405,6 +421,7 @@ impl cosmic::Application for RecentApps {
                     self.rebuild_items();
                 }
             }
+            Message::IconThemeChanged => follow_desktop_icon_theme(),
             Message::Open(app_id) => {
                 if let Some(handle) = self.window_for(&app_id) {
                     if let Some(tx) = self.tx.as_ref() {
@@ -425,6 +442,9 @@ impl cosmic::Application for RecentApps {
     fn subscription(&self) -> Subscription<Message> {
         Subscription::batch([
             wayland_subscription().map(Message::Wayland),
+            self.core
+                .watch_config::<ToolkitIconTheme>(TOOLKIT_CONFIG_ID)
+                .map(|_| Message::IconThemeChanged),
             self.core.watch_config(APP_ID).map(|u| {
                 for why in u.errors {
                     tracing::error!(why = why.to_string(), "Error watching config");
