@@ -164,7 +164,7 @@ impl RecentApps {
             }
 
             let icon_name = entry.icon().unwrap_or(&entry.appid);
-            tracing::info!(
+            tracing::debug!(
                 app_id = %app_id,
                 desktop_entry = %entry.appid,
                 icon = icon_name,

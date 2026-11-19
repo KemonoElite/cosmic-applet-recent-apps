@@ -73,7 +73,7 @@ COSMIC Settings and the panel find applets only by scanning the `.desktop` files
        journalctl --user -b -a | grep CosmicAppletRecentApps
 
    Look for `recent apps applet started`, `most recently used app`, `no desktop entry found`,
-   or `exited with code` (a crash, with its message just above). Set `RUST_LOG=debug` for more.
+   or `exited with code` (a crash, with its message just above). See "Logs" below for more detail.
 
 The installed `.desktop` file points `Exec=` at the absolute path of the binary, because the
 panel starts applets with its own `PATH` (which on NixOS or with a `~/.local` prefix usually
@@ -85,18 +85,27 @@ The applet uses the icon theme chosen in COSMIC Settings > Desktop > Appearance 
 Where that choice is stored depends on the COSMIC version: released builds keep it in the toolkit
 config (`~/.config/cosmic/com.system76.CosmicTk/v1/icon_theme`), newer development builds in the
 dark/light theme config. The applet checks the theme config first, then the toolkit config, at
-startup and again whenever either changes. The log shows what it found, and for every app it
-shows the desktop entry, the `Icon=` name and the file it resolved:
-
-    journalctl --user -b -a | grep -E "icon theme|recent app icon"
-
-Expect `using the desktop's icon theme icon_theme=<your theme> source=toolkit config` and
-resolved paths inside that theme's folder. (`-a` shows lines the journal considers binary. The
-applet only logs after a rebuild *and* a re-login, since the panel keeps running the old binary
-until then. To test without the panel, run `cosmic-applet-recent-apps` in a terminal.)
+startup and again whenever either changes.
 
 If an app's icon is still the generic one, your theme has no icon with that name and the lookup
-falls back to the app's own `hicolor` icon; the `resolved` path shows which.
+falls back to the app's own `hicolor` icon.
+
+## Logs
+
+The panel keeps only `warn`+ log lines and re-logs an applet's stderr (not stdout) at error level,
+so the applet logs to stderr. Under the panel its lines show up in the user journal, prefixed with
+its id:
+
+    journalctl --user -b -a | grep CosmicAppletRecentApps
+
+You get one line at startup, one when the icon theme is picked up or changes, and one each time the
+most recently used app changes. (`-a` shows lines the journal considers binary. The panel keeps
+running the old binary until you log out and back in after a rebuild.)
+
+For more detail, run the applet in a terminal with debug logging; it then also prints, for every app
+it shows, the desktop entry, the `Icon=` name, the theme and the icon file it resolved:
+
+    RUST_LOG=cosmic_applet_recent_apps=debug cosmic-applet-recent-apps
 
 ## Notes
 

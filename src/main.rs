@@ -3,15 +3,17 @@
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn main() -> cosmic::iced::Result {
-    // The panel doesn't set RUST_LOG, so default to showing this applet's own
-    // info logs (they end up in the user journal); RUST_LOG still overrides.
+    // The panel starts applets with its own log filter (warn+). It re-logs an applet's stdout
+    // at info level (dropped) but its stderr at error level (kept), so write to stderr or
+    // nothing of ours reaches the journal. RUST_LOG still overrides the default filter.
     let filter = tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         tracing_subscriber::EnvFilter::new("warn,cosmic_applet_recent_apps=info")
     });
-    // Plain text, no timestamps: the panel forwards our output to the journal, which adds
-    // its own timestamps and shows lines containing colour codes as "[... blob data]".
+    // Plain text, no timestamps: the journal adds its own and shows lines containing
+    // colour codes as "[... blob data]".
     tracing_subscriber::fmt()
         .with_env_filter(filter)
+        .with_writer(std::io::stderr)
         .with_ansi(false)
         .without_time()
         .init();
